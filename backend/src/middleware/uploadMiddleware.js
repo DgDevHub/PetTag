@@ -1,45 +1,9 @@
 import multer from 'multer';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Cria o diretório de uploads se não existir
-const uploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-const petsDir = path.join(uploadsDir, 'pets');
-const qrcodesDir = path.join(uploadsDir, 'qrcodes');
-
-if (!fs.existsSync(petsDir)) {
-    fs.mkdirSync(petsDir, { recursive: true });
-}
-
-if (!fs.existsSync(qrcodesDir)) {
-    fs.mkdirSync(qrcodesDir, { recursive: true });
-}
-
-// Configuração do storage
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        // Determina o diretório baseado no endpoint
-        let uploadPath = petsDir; // Default para pets
-        
-        if (req.path.includes('qrcode')) {
-            uploadPath = qrcodesDir;
-        }
-        
-        cb(null, uploadPath);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Configuração do storage em memória (não salva em disco)
+// Todas as imagens são enviadas diretamente para o Cloudinary
+const storage = multer.memoryStorage();
 
 // Filtro de arquivos (apenas imagens)
 const fileFilter = (req, file, cb) => {

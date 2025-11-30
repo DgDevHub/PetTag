@@ -2,9 +2,28 @@ import { Router } from 'express';
 import { upload } from '../middleware/uploadMiddleware.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import cloudinary from '../config/cloudinary.js';
-import fs from 'fs';
 
 const router = Router();
+
+// Helper para upload de buffer para Cloudinary
+const uploadToCloudinary = (buffer, folder) => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder,
+                transformation: [
+                    { width: 1200, height: 1200, crop: 'limit' },
+                    { quality: 'auto:good' }
+                ]
+            },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            }
+        );
+        uploadStream.end(buffer);
+    });
+};
 
 // Upload de foto do pet para Cloudinary
 router.post('/upload/pet', authMiddleware, upload.single('photo'), async (req, res) => {
@@ -13,17 +32,7 @@ router.post('/upload/pet', authMiddleware, upload.single('photo'), async (req, r
             return res.status(400).json({ error: 'Nenhuma imagem foi enviada.' });
         }
 
-        // Fazer upload para o Cloudinary
-        const result = await cloudinary.uploader.upload(req.file.path, {
-            folder: 'qrau/pets',
-            transformation: [
-                { width: 800, height: 800, crop: 'limit' },
-                { quality: 'auto:good' }
-            ]
-        });
-
-        // Deletar arquivo temporário do servidor
-        fs.unlinkSync(req.file.path);
+        const result = await uploadToCloudinary(req.file.buffer, 'qrau/pets');
 
         return res.status(200).json({
             message: 'Imagem enviada com sucesso!',
@@ -32,12 +41,6 @@ router.post('/upload/pet', authMiddleware, upload.single('photo'), async (req, r
         });
     } catch (error) {
         console.error('Erro ao fazer upload:', error.message);
-        
-        // Deletar arquivo temporário em caso de erro
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
-        
         return res.status(500).json({ error: 'Erro ao fazer upload da imagem.' });
     }
 });
@@ -49,17 +52,7 @@ router.post('/upload/qrcode', authMiddleware, upload.single('background'), async
             return res.status(400).json({ error: 'Nenhuma imagem foi enviada.' });
         }
 
-        // Fazer upload para o Cloudinary
-        const result = await cloudinary.uploader.upload(req.file.path, {
-            folder: 'qrau/qrcodes',
-            transformation: [
-                { width: 1200, height: 1200, crop: 'limit' },
-                { quality: 'auto:good' }
-            ]
-        });
-
-        // Deletar arquivo temporário do servidor
-        fs.unlinkSync(req.file.path);
+        const result = await uploadToCloudinary(req.file.buffer, 'qrau/qrcodes');
 
         return res.status(200).json({
             message: 'Imagem enviada com sucesso!',
@@ -68,12 +61,6 @@ router.post('/upload/qrcode', authMiddleware, upload.single('background'), async
         });
     } catch (error) {
         console.error('Erro ao fazer upload:', error.message);
-        
-        // Deletar arquivo temporário em caso de erro
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
-        
         return res.status(500).json({ error: 'Erro ao fazer upload da imagem.' });
     }
 });

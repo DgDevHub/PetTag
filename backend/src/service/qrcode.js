@@ -1,8 +1,45 @@
 import { PrismaClient } from '@prisma/client';
 import QRCode from 'qrcode';
 import sharp from 'sharp';
+import { v2 as cloudinary } from 'cloudinary';
 
 const prisma = new PrismaClient();
+
+// Função para extrair public_id do Cloudinary
+const getCloudinaryPublicId = (url) => {
+    if (!url || !url.includes('cloudinary.com')) return null;
+    
+    try {
+        const parts = url.split('/upload/');
+        if (parts.length < 2) return null;
+        
+        const pathParts = parts[1].split('/');
+        const relevantParts = pathParts.filter(part => !part.startsWith('v') || isNaN(part.slice(1)));
+        const filename = relevantParts.join('/');
+        const publicId = filename.substring(0, filename.lastIndexOf('.')) || filename;
+        
+        return publicId;
+    } catch (error) {
+        console.error('Erro ao extrair public_id:', error);
+        return null;
+    }
+};
+
+// Função para deletar imagem do Cloudinary
+const deleteCloudinaryImage = async (url) => {
+    const publicId = getCloudinaryPublicId(url);
+    if (!publicId) {
+        console.log('Public ID não encontrado na URL:', url);
+        return;
+    }
+
+    try {
+        const result = await cloudinary.uploader.destroy(publicId);
+        console.log('✅ Imagem deletada do Cloudinary:', publicId, result);
+    } catch (error) {
+        console.error('❌ Erro ao deletar imagem do Cloudinary:', error);
+    }
+};
 
 // Função helper para converter hex em rgba
 const hexToRgba = (hex, opacity) => {
@@ -115,6 +152,26 @@ export const getQRCodePublic = async (qrCodeId) => {
 
 // Atualizar QR Code
 export const updateQRCode = async (qrCodeId, qrCodeData) => {
+    // Busca o QR Code atual para pegar o background antigo
+    const currentQRCode = await prisma.qRCode.findUnique({
+        where: { id: qrCodeId }
+    });
+
+    // Se está trocando o background customizado, deleta o antigo do Cloudinary
+    if (currentQRCode && currentQRCode.customBackground) {
+        // Se o novo background é diferente do antigo (e não é vazio), deleta o antigo
+        if (qrCodeData.customBackground && 
+            qrCodeData.customBackground !== currentQRCode.customBackground) {
+            console.log('🗑️ Deletando background antigo:', currentQRCode.customBackground);
+            await deleteCloudinaryImage(currentQRCode.customBackground);
+        }
+        // Se está removendo o background (novo é vazio/null), também deleta o antigo
+        else if (!qrCodeData.customBackground) {
+            console.log('🗑️ Removendo background:', currentQRCode.customBackground);
+            await deleteCloudinaryImage(currentQRCode.customBackground);
+        }
+    }
+
     return await prisma.qRCode.update({
         where: { id: qrCodeId },
         data: {
@@ -389,6 +446,17 @@ export const registerQRCodeScan = async (qrCodeId, scanData) => {
 
 // Deletar QR Code
 export const deleteQRCode = async (qrCodeId) => {
+    // Busca o QR Code antes de deletar para pegar o background
+    const qrCode = await prisma.qRCode.findUnique({
+        where: { id: qrCodeId }
+    });
+
+    // Se tinha background customizado, deleta do Cloudinary
+    if (qrCode && qrCode.customBackground) {
+        console.log('🗑️ Deletando background do QR Code removido:', qrCode.customBackground);
+        await deleteCloudinaryImage(qrCode.customBackground);
+    }
+
     return await prisma.qRCode.delete({
         where: { id: qrCodeId }
     });

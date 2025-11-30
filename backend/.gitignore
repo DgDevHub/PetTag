@@ -3,3 +3,6 @@ node_modules
 .env
 
 /generated/prisma
+
+# Upload folders (not used - everything goes to Cloudinary)
+uploads/

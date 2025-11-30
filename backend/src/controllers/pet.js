@@ -1,4 +1,5 @@
 import * as petService from '../service/pet.js';
+import * as qrCodeService from '../service/qrcode.js';
 import cloudinary from '../config/cloudinary.js';
 
 // Função helper para extrair public_id do Cloudinary URL
@@ -148,7 +149,14 @@ export const deletePet = async (req, res) => {
         // Buscar pet para pegar a foto antes de deletar
         const pet = await petService.getPetById(id);
         
-        // Deletar a foto do Cloudinary se existir
+        // Buscar QR Code associado ao pet para deletar o background do Cloudinary
+        const qrCode = await qrCodeService.getQRCodeByPetId(id);
+        if (qrCode && qrCode.customBackground) {
+            console.log('🗑️ Deletando background do QR Code antes de excluir o pet');
+            await deleteCloudinaryImage(qrCode.customBackground);
+        }
+        
+        // Deletar a foto do pet do Cloudinary se existir
         if (pet && pet.photo) {
             await deleteCloudinaryImage(pet.photo);
         }
