@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String       @id @default(uuid())
+  name      String       
+  email     String       @unique
+  password  String
+  phone     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  
+  pets      Pet[]
+}
+
+model Pet {
+  id            String       @id @default(uuid())
+  name          String
+  species       String       // Cachorro, Gato, etc
+  breed         String?      // Raça
+  color         String?
+  age           String?
+  weight        String?
+  photo         String?      // URL da foto
+  medicalInfo   String?      // Informações médicas importantes
+  observations  String?      // Observações gerais
+  userId        String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  qrCode        QRCode?
+  
+  @@index([userId])
+}
+
+model QRCode {
+  id                String       @id @default(uuid())
+  qrCodeId          String       @unique @default(cuid()) // ID único para o QR Code
+  petId             String       @unique
+  
+  // Customização do QR Code
+  backgroundColor   String       @default("#ffffff")
+  foregroundColor   String       @default("#000000")
+  backgroundOpacity Float?       @default(1.0) // Opacidade da cor de fundo (0.0 a 1.0)
+  customText        String?      // Texto personalizado (deprecated - usar textTop/textBottom)
+  customBackground  String?      // URL da imagem de fundo customizada
+  logoUrl           String?      // Logo/ícone no centro do QR
+  
+  // Textos personalizados
+  textTop           String?      // Texto acima do QR Code
+  textBottom        String?      // Texto abaixo do QR Code
+  textTopColor      String?      @default("#000000")
+  textBottomColor   String?      @default("#000000")
+  textTopSize       Int?         @default(24) // Tamanho da fonte em pixels
+  textBottomSize    Int?         @default(24)
+  
+  // Configurações de layout
+  qrSize            Int?         @default(300) // Tamanho do QR Code em pixels
+  borderRadius      Int?         @default(0)   // Borda arredondada
+  padding           Int?         @default(20)  // Espaçamento interno
+  
+  // Informações de contato
+  ownerName         String
+  ownerPhone        String
+  ownerEmail        String?
+  ownerAddress      String?
+  emergencyContact  String?
+  emergencyPhone    String?
+  rewardOffered     Boolean      @default(false)
+  rewardAmount      String?
+  additionalInfo    String?
+  
+  // Estatísticas
+  scanCount         Int          @default(0)
+  lastScanned       DateTime?
+  isActive          Boolean      @default(true)
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  pet               Pet          @relation(fields: [petId], references: [id], onDelete: Cascade)
+  scans             QRCodeScan[]
+  
+  @@index([qrCodeId])
+  @@index([petId])
+}
+
+model QRCodeScan {
+  id          String       @id @default(uuid())
+  qrCodeId    String
+  scannedAt   DateTime     @default(now())
+  ipAddress   String?
+  userAgent   String?
+  location    String?
+  
+  qrCode      QRCode       @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  
+  @@index([qrCodeId])
+}
