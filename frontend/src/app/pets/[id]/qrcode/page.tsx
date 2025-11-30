@@ -174,7 +174,7 @@ export default function ViewQRCode() {
                             </h2>
                             <div className="bg-gray-50 rounded-xl p-8 mb-6 flex items-center justify-center">
                                 <img
-                                    src={`http://localhost:3000/api/qrcode/view/${qrCode.qrCodeId}`}
+                                    src={`/api/qrcode/view/${qrCode.qrCodeId}`}
                                     alt="QR Code"
                                     className="max-w-full h-auto"
                                     key={qrCode.qrCodeId}

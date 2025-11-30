@@ -97,7 +97,7 @@ export default function NewPetPage() {
                                     <div className="w-32 h-32 mx-auto bg-linear-to-br from-orange-100 to-pink-100 rounded-full flex items-center justify-center hover:shadow-lg transition-all overflow-hidden">
                                         {imagePreview || formData.photo ? (
                                             <img 
-                                                src={imagePreview || (formData.photo.startsWith('http') ? formData.photo : `http://localhost:3000${formData.photo}`)} 
+                                                src={imagePreview || formData.photo} 
                                                 alt="Pet" 
                                                 className="w-full h-full object-cover" 
                                             />

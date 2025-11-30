@@ -226,7 +226,7 @@ export default function EditQRCode() {
             params.append('customBackground', '');
         }
 
-        const url = `http://localhost:3000/api/qrcode/view/${qrCode.qrCodeId}?${params.toString()}`;
+        const url = `/api/qrcode/view/${qrCode.qrCodeId}?${params.toString()}`;
         return url;
     };
 

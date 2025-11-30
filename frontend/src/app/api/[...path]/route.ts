@@ -65,20 +65,27 @@ async function proxyRequest(
     }
 
     const contentType = request.headers.get('content-type');
-    if (contentType) {
-      headers['Content-Type'] = contentType;
-    }
-
+    
     // Prepara o body para POST, PUT, PATCH
     let body: any = undefined;
+    const isFormData = contentType?.includes('multipart/form-data');
+    
     if (['POST', 'PUT', 'PATCH'].includes(method)) {
-      // Se for FormData, mantém como está
-      if (contentType?.includes('multipart/form-data')) {
+      // Se for FormData, NÃO adiciona Content-Type (fetch fará automaticamente com boundary correto)
+      if (isFormData) {
         body = await request.formData();
-      } else if (contentType?.includes('application/json')) {
-        body = await request.text();
+        // NÃO adiciona Content-Type para FormData - deixa o fetch gerenciar
       } else {
-        body = await request.text();
+        // Para JSON e outros tipos, adiciona o Content-Type
+        if (contentType) {
+          headers['Content-Type'] = contentType;
+        }
+        
+        if (contentType?.includes('application/json')) {
+          body = await request.text();
+        } else {
+          body = await request.text();
+        }
       }
     }
 
@@ -91,7 +98,24 @@ async function proxyRequest(
       redirect: 'manual',
     });
 
-    // Lê o corpo da resposta
+    // Verifica o tipo de conteúdo da resposta
+    const responseContentType = response.headers.get('content-type');
+    
+    console.log(`✅ Proxy ${method} ${backendUrl} - Status: ${response.status} - Type: ${responseContentType}`);
+
+    // Se for imagem, retorna como blob
+    if (responseContentType?.includes('image/')) {
+      const imageBuffer = await response.arrayBuffer();
+      return new NextResponse(imageBuffer, {
+        status: response.status,
+        headers: {
+          'Content-Type': responseContentType,
+          'Cache-Control': response.headers.get('cache-control') || 'no-cache',
+        },
+      });
+    }
+
+    // Se for JSON ou texto, processa normalmente
     const responseText = await response.text();
     
     // Tenta parsear como JSON
@@ -101,8 +125,6 @@ async function proxyRequest(
     } catch {
       responseData = responseText;
     }
-
-    console.log(`✅ Proxy ${method} ${backendUrl} - Status: ${response.status}`);
 
     // Retorna a resposta do backend
     return NextResponse.json(responseData, {
